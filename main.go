@@ -1,4 +1,4 @@
-package godaddy_dns_client
+package godaddy_dyndns
 
 import (
 	"bytes"
