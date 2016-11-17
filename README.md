@@ -1,44 +1,66 @@
 # GoDaddy Dynamic DNS
-A simple dynamic DNS updater for GoDaddy
+A butchered verssion of prashantv/godaddy_dyndns to be used as an include library
 
 ## Installing
 
 [Install Go](https://golang.org/doc/install) and run:
 ```
-go get -v -u -f github.com/prashantv/godaddy_dyndns
+go get -v -u -f github.com/kwiksand/godaddy_dyndns
 ```
 
-This will install the `godaddy_dyndns` binary to `$GOPATH/bin/godaddy_dns`.
+## Usage
 
-## Configuring
-
-1. Create an `A` record for a subdomain using the [GoDaddy DNS manager](https://dcc.godaddy.com/manage/).
-   Record the subdomain you created and the domain under which the subdomain was created.
-3. Get a **production** key from [the Keys page](https://developer.godaddy.com/keys).
-2. Create a `secrets.json` file that contains the key contents in the following format:
-```json
-{
-  "apiKey": "--INSERT-API-KEY--",
-  "apiSecret": "--INSERT-API-SECRET--"
-}
+To use the updater:
 ```
 
-## Running
-```
-Usage of godaddy_dyndns:
-  -root-domain string
-    	The root GoDaddy domain (default "domain.com")
-  -secrets-file string
-    	Path to a file containing the Godaddy API key and secret (default "secrets.json")
-  -sub-domain string
-    	The subdomain to update (default "sub")
+import (
+
+    ...
+
+    "github.com/kwiksand/godaddy_dyndns"
+)
+    var goDaddyDNS = godaddy_dyndns.New()
+
+    var rootDomain = "example.com"
+    var subDomain = "testhost"
+
+    goDaddyDNS.SetKey("insert API Key")
+    goDaddyDNS.SetSecret("insert API Secret")
+
+    if ip != "" {
+		// Use specified IP
+        publicIP = *ip
+    } else {
+        pubIP, err := goDaddyDNS.GetPublicIP()
+        publicIP = pubIP
+        if err != nil {
+            log.Fatalf("GetPublicIP failed: %v", err)
+        }
+    }
+
+    log.Printf("About to set Host to point at: " + publicIP)
+
+    currentIP, err := goDaddyDNS.GetDNS(*rootDomain, *subDomain)
+    if err != nil {
+        // we're inserting
+        log.Printf("Create DNS record for %v", publicIP)
+        if err := goDaddyDNS.InsertDNS(publicIP, *rootDomain, *subDomain); err != nil {
+            log.Fatalf("InsertDNS failed: %v", err)
+        }
+    } else {
+        // we're updating
+
+        if currentIP == publicIP {
+            log.Printf("Nothing to update (publicIP = DNS = %v)", publicIP)
+            return
+        }
+
+        log.Printf("Update DNS from %v to %v", currentIP, publicIP)
+        if err := goDaddyDNS.UpdateDNS(publicIP, *rootDomain, *subDomain); err != nil {
+            log.Fatalf("UpdateDNS failed: %v", err)
+        }
+    }
+
+    log.Printf("Update successful")
 ```
 
-A simple command line is:
-```
-godaddy_dyndns --secrets-file secrets.json  --root-domain example.com --sub-domain home
-```
-
-This will update `home.example.com` to the external IP that is detected according to [MyExternalIP](http://myexternalip.com/).
-
-You can set up this job to run on a schedule (e.g. via Cron).
